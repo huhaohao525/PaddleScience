@@ -103,12 +103,10 @@ class IFMMLP(base.Arch):
             my_model = IFM_DNN(
                 inputs=inputs,
                 hidden_units=hidden_units,
-                d_out=d_out + 1,
-                sigma=sigma,
+                outputs=outputs,
                 dp_ratio=dp_ratio,
                 first_omega_0=first_omega_0,
                 hidden_omega_0=hidden_omega_0,
-                outputs=outputs,
                 reg=reg,
             )
         elif embed_name == "GM":

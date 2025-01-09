@@ -314,7 +314,7 @@ class IFMMoeDataset(io.Dataset):
 
     # Whether support batch indexing for speeding up fetching process.
     batch_index: bool = False
-    use_pgl: bool = True
+    use_pgl: bool = False
 
     def __init__(
         self,
@@ -458,5 +458,5 @@ class IFMMoeDataset(io.Dataset):
                 self.label_keys[0]: paddle.to_tensor(self.Ys[idx], dtype="float32"),
                 self.label_keys[1]: paddle.to_tensor(self.mask[idx], dtype="float32"),
             },
-            None,
+            {},
         )

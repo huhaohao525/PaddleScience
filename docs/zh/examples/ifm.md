@@ -120,7 +120,7 @@ examples/ifm/ifm.py:94:100
 
 `SupervisedConstraint` 的第一个参数是数据的加载方式，这里使用上文中定义的 `train_dataloader_cfg`；
 
-第二个参数是损失函数的定义，这里使用自定义的损失函数；
+第二个参数是损失函数的定义，这里使用自定义的损失函数；作者通过Regularization flag `reg` 参数控制损失函数选择： `MSELoss` 或 `BCEWithLogitsLoss`；
 
 第三个参数是约束条件的名字，方便后续对其索引。此处命名为 `Sup`。
 
@@ -128,9 +128,9 @@ examples/ifm/ifm.py:94:100
 
 在该案例中，分子属性预测模型基于 MLP 网络模型实现，用 PaddleScience 代码表示如下：
 
-``` py linenums="246" title="examples/ifm/ifm.py"
+``` py linenums="256" title="examples/ifm/ifm.py"
 --8<--
-examples/ifm/ifm.py:246:261
+examples/ifm/ifm.py:256:271
 --8<--
 ```
 
@@ -160,7 +160,7 @@ examples/ifm/ifm.py:141:143
 
 ``` py linenums="145" title="examples/ifm/ifm.py"
 --8<--
-examples/ifm/ifm.py:145:177
+examples/ifm/ifm.py:145:182
 --8<--
 ```
 
@@ -170,9 +170,9 @@ examples/ifm/ifm.py:145:177
 
 完成上述设置之后，只需要将上述实例化的对象按顺序传递给 `ppsci.solver.Solver`，然后启动训练、评估。
 
-``` py linenums="179" title="examples/ifm/ifm.py"
+``` py linenums="184" title="examples/ifm/ifm.py"
 --8<--
-examples/ifm/ifm.py:179:197
+examples/ifm/ifm.py:184:202
 --8<--
 ```
 
@@ -180,17 +180,17 @@ examples/ifm/ifm.py:179:197
 
 构建模型的代码为：
 
-``` py linenums="246" title="examples/ifm/ifm.py"
+``` py linenums="256" title="examples/ifm/ifm.py"
 --8<--
-examples/ifm/ifm.py:246:261
+examples/ifm/ifm.py:256:271
 --8<--
 ```
 
 构建评估器的代码为：
 
-``` py linenums="263" title="examples/ifm/ifm.py"
+``` py linenums="273" title="examples/ifm/ifm.py"
 --8<--
-examples/ifm/ifm.py:263:300
+examples/ifm/ifm.py:273:310
 --8<--
 ```
 
@@ -210,6 +210,8 @@ examples/ifm/ifm.py
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **MLP-None** | 0.82682 | 0.50039 | 0.71932 | 0.88891 | 0.66834 |
 | **MLP-IFM** | 0.84245 | 0.60289 | 0.74007 | 0.89553 | 0.84864 |
+| **MLP-IFM Loss** | 0.25697 | 1.36643 | 0.15742 | 0.47294 | 1.39181 |
+
 
 可以看到增加了IFM模块的模型可以取得更优的预测结果，符合作者的设计目的。
 

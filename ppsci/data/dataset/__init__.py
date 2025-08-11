@@ -55,6 +55,8 @@ from ppsci.data.dataset.vtu_dataset import VtuDataset
 from ppsci.data.process import transform
 from ppsci.utils import logger
 
+from ppsci.data.dataset.chemprop_dataset_refactor import MoleculeDatasetIter
+
 if TYPE_CHECKING:
     from paddle import io
 
@@ -97,6 +99,7 @@ __all__ = [
     "IFMMoeDataset",
     "STAFNetDataset",
     "TMTDataset",
+    "MoleculeDatasetIter",
 ]
 
 

@@ -352,7 +352,7 @@ def train(cfg: DictConfig):
     solver.train()
 
 import pandas as pd
-from chemprop_models import chemprop_load, chemprop_predict, my_chemprop_load
+from chemprop_models import chemprop_predict, my_chemprop_load
 from tqdm import tqdm
 from pathlib import Path
 

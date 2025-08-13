@@ -8,7 +8,7 @@ def compute_pnorm(model: paddle.nn.Layer) ->float:
     """
     Computes the norm of the parameters of a model.
 
-    :param model: A PyTorch model.
+    :param model: A model.
     :return: The norm of the parameters of the model.
     """
     return math.sqrt(sum([(p.norm().item() ** 2) for p in model.parameters()]))
@@ -18,7 +18,7 @@ def compute_gnorm(model: paddle.nn.Layer) ->float:
     """
     Computes the norm of the gradients of a model.
 
-    :param model: A PyTorch model.
+    :param model: A model.
     :return: The norm of the gradients of the model.
     """
     return math.sqrt(sum([(p.grad.norm().item() ** 2) for p in model.
@@ -29,7 +29,7 @@ def param_count(model: paddle.nn.Layer) ->int:
     """
     Determines number of trainable parameters.
 
-    :param model: An PyTorch model.
+    :param model: A model.
     :return: The number of trainable parameters in the model.
     """
     return sum(param.size for param in model.parameters() if not param.
@@ -40,7 +40,7 @@ def param_count_all(model: paddle.nn.Layer) ->int:
     """
     Determines number of trainable parameters.
 
-    :param model: An PyTorch model.
+    :param model: A model.
     :return: The number of trainable parameters in the model.
     """
     return sum(param.size for param in model.parameters())
@@ -102,7 +102,7 @@ def initialize_weights(model: paddle.nn.Layer) ->None:
     """
     Initializes the weights of a model in place.
 
-    :param model: An PyTorch model.
+    :param model: A model.
     """
     for param in model.parameters():
         if param.dim() == 1:
@@ -129,7 +129,7 @@ class NoamLR(paddle.optimizer.lr.LRScheduler):
         List[Union[float, int]], total_epochs: List[int], steps_per_epoch:
         int, init_lr: List[float], max_lr: List[float], final_lr: List[float]):
         """
-        :param optimizer: A PyTorch optimizer.
+        :param optimizer: A optimizer.
         :param warmup_epochs: The number of epochs during which to linearly increase the learning rate.
         :param total_epochs: The total number of epochs.
         :param steps_per_epoch: The number of steps (batches) per epoch.

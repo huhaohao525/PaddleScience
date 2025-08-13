@@ -30,7 +30,7 @@ def get_loss_func(args: TrainArgs) ->Callable:
     Gets the loss function corresponding to a given dataset type.
 
     :param args: Arguments containing the dataset type ("classification", "regression", or "multiclass").
-    :return: A PyTorch loss function.
+    :return: A loss function.
     """
     supported_loss_functions = {'regression': {'mse': paddle.nn.MSELoss(
         reduction='none'), 'bounded_mse': bounded_mse_loss, 'mve':

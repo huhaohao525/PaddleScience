@@ -579,7 +579,7 @@ class BatchMolGraph:
 
         :param atom_messages: Whether to use atom messages instead of bond messages. This changes the bond feature
                               vector to contain only bond features rather than both atom and bond features.
-        :return: A tuple containing PyTorch tensors with the atom features, bond features, graph structure,
+        :return: A tuple containing tensors with the atom features, bond features, graph structure,
                  and scope of the atoms and bonds (i.e., the indices of the molecules they belong to).
         """
         if atom_messages:
@@ -596,7 +596,7 @@ class BatchMolGraph:
         """
         Computes (if necessary) and returns a mapping from each bond index to all the incoming bond indices.
 
-        :return: A PyTorch tensor containing the mapping from each bond index to all the incoming bond indices.
+        :return: A tensor containing the mapping from each bond index to all the incoming bond indices.
         """
         if self.b2b is None:
             b2b = self.a2b[self.b2a]
@@ -609,7 +609,7 @@ class BatchMolGraph:
         """
         Computes (if necessary) and returns a mapping from each atom index to all neighboring atom indices.
 
-        :return: A PyTorch tensor containing the mapping from each atom index to all the neighboring atom indices.
+        :return: A tensor containing the mapping from each atom index to all the neighboring atom indices.
         """
         if self.a2a is None:
             self.a2a = self.b2a[self.a2b]

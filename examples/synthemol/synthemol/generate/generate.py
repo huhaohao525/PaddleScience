@@ -1,5 +1,4 @@
 """Generate molecules combinatorially using a Monte Carlo tree search guided by a molecular property predictor."""
-import sys
 from datetime import datetime
 from pathlib import Path
 import pandas as pd

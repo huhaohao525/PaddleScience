@@ -55,7 +55,7 @@ from ppsci.data.dataset.vtu_dataset import VtuDataset
 from ppsci.data.process import transform
 from ppsci.utils import logger
 
-from ppsci.data.dataset.chemprop_dataset_refactor import MoleculeDatasetIter
+from ppsci.data.dataset.synthemol_dataset import MoleculeDatasetIter
 
 if TYPE_CHECKING:
     from paddle import io

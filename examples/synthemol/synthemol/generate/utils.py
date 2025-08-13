@@ -4,12 +4,9 @@ from pathlib import Path
 from typing import Callable
 import numpy as np
 import pandas as pd
-# from chemfunc import compute_fingerprint # hth
 from synthemol.constants import FINGERPRINT_TYPES, MODEL_TYPES
 from synthemol.generate.node import Node
-#from synthemol.models.chemprop_models import chemprop_load, chemprop_load_scaler, chemprop_predict_on_molecule_ensemble # hth
-from synthemol.models.chemprop_models import chemprop_predict_on_molecule_ensemble # hth
-#from synthemol.models.sklearn_models import sklearn_load, sklearn_predict_on_molecule_ensemble # hth
+from synthemol.models.chemprop_models import chemprop_predict_on_molecule_ensemble
 from synthemol.models.sklearn_models import sklearn_predict_on_molecule_ensemble
 
 

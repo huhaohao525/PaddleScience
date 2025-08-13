@@ -1,31 +1,7 @@
 """Contains training and predictions functions for Chemprop models."""
-#from pathlib import Path # hth
 import numpy as np
-#from chemprop.models import MoleculeModel
 from ppsci.arch.chemprop_molecule import MoleculeModel # hth
-#from chemprop.utils import load_checkpoint, load_scalers # hth
 from sklearn.preprocessing import StandardScaler
-
-'''
-def chemprop_load(model_path: Path, device: (paddle.CPUPlace, paddle.
-    CUDAPlace, str)=paddle.CPUPlace()) ->MoleculeModel:
-    """Loads a Chemprop model.
-
-    :param model_path: A path to a Chemprop model.
-    :param device: The device on which to load the model.
-    :return: A Chemprop model.
-    """
-    return load_checkpoint(path=str(model_path), device=device)
-
-
-def chemprop_load_scaler(model_path: Path) ->StandardScaler:
-    """Loads a Chemprop model's data scaler.
-
-    :param model_path: A path to a Chemprop model.
-    :return: A data scaler.
-    """
-    return load_scalers(path=str(model_path))[0]
-''' # hth
 
 
 def chemprop_predict_on_molecule(model: MoleculeModel, smiles: str,

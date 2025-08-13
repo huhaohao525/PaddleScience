@@ -2,9 +2,10 @@ import paddle
 """Contains training and predictions functions for Chemprop models."""
 from pathlib import Path
 import numpy as np
-#from chemprop.models import MoleculeModel
 from ppsci.arch.chemprop_molecule import MoleculeModel
-#from chemprop.utils import load_checkpoint, load_scalers
+from ppsci.data.dataset.synthemol_dataset import MoleculeDataLoader, StandardScaler, MoleculeDataset, MoleculeDatapoint
+from typing import List
+from nn_utils import activate_dropout
 
 
 def my_chemprop_load(model, model_path: Path, device: (paddle.CPUPlace, paddle.CUDAPlace, str)=paddle.CPUPlace()) -> MoleculeModel:
@@ -13,11 +14,6 @@ def my_chemprop_load(model, model_path: Path, device: (paddle.CPUPlace, paddle.C
     model.set_state_dict(state_dict)
     return model
 
-# =============================================================================================
-
-from ppsci.data.dataset.chemprop_dataset_refactor import MoleculeDataLoader, StandardScaler, MoleculeDataset, MoleculeDatapoint
-from typing import List
-from nn_utils import activate_dropout
 
 def predict(model: MoleculeModel, data_loader: MoleculeDataLoader,
     disable_progress_bar: bool=False, scaler: StandardScaler=None,

@@ -10,9 +10,8 @@ from warnings import warn
 from tap import Tap
 import numpy as np
 from rdkit import Chem
-#from chemprop.data import set_cache_mol, empty_cache
-#from chemprop.features import get_available_features_generators, MolGraph
 from features import get_available_features_generators, MolGraph
+
 Metric = Literal['auc', 'prc-auc', 'rmse', 'mae', 'mse', 'r2', 'accuracy',
     'cross_entropy', 'binary_cross_entropy', 'sid', 'wasserstein', 'f1',
     'mcc', 'bounded_rmse', 'bounded_mae', 'bounded_mse']

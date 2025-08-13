@@ -316,7 +316,7 @@ from rdkit import Chem
 from examples.synthemol.args import TrainArgs
 #from chemprop.features import BatchMolGraph
 
-from ppsci.data.dataset.chemprop_dataset_refactor import BatchMolGraph
+from ppsci.data.dataset.synthemol_dataset import BatchMolGraph
 #from chemprop.nn_utils import get_activation_function, initialize_weights
 
 import sys

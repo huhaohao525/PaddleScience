@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import hydra
 import numpy as np
-#from ednn_utils import Meter
 from omegaconf import DictConfig
 
 import paddle
-#from typing import Callable
 from args import TrainArgs
 from loss_functions import get_loss_func
 
 import ppsci
 import ppsci.arch.chemprop_molecule
-#from ppsci.utils import logger
 
 def get_train_loss_func(args, pos_weights=None):  #:paddle.Tensor=None):
     def train_loss_func(output_dict, label_dict, weight_dict):

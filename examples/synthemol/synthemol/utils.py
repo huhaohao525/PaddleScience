@@ -3,7 +3,6 @@ import re
 from typing import Any
 import numpy as np
 from rdkit import Chem
-#from synthemol.constants import MOLECULE_TYPE
 from .constants import MOLECULE_TYPE
 
 

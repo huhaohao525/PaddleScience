@@ -27,7 +27,7 @@ output_dir: ${hydra:run.dir}
 log_freq: 20
 
 data_label: "tox21" #'tox21'
-data_dir: "./data/"
+data_dir: "./data"
 
 # model settings
 MODEL:
@@ -55,13 +55,13 @@ DATA:
   fingerprint_type: null
   smiles_column: 'smiles'
   property_column: "antibiotic_activity"
-  data_path: './data/Data/1_training_data/antibiotics_hits.csv'
+  data_path: ${data_dir}/Data/1_training_data/antibiotics_hits.csv
   num_models: 1
   num_folds: 10
   dataset_name: "MoleculeDatasetIter"
 
 PRE_COMPUTE:
-  data_path: "./data/Data/4_real_space/building_blocks.csv"
+  data_path: ${data_dir}/Data/4_real_space/building_blocks.csv
   model_path: "./outputs_synthemol/checkpoints/epoch_44.pdparams"
   smiles_column: 'smiles'
   model_type: 'chemprop'
@@ -78,7 +78,7 @@ GENERATE:
   save_dir: './generated'
   building_blocks_path: "./pre-compute/building_blocks.csv"
   fingerprint_type: null
-  reaction_to_building_blocks_path: './data/Data/4_real_space/reaction_to_building_blocks_filtered.pkl'
+  reaction_to_building_blocks_path: ${data_dir}/Data/4_real_space/reaction_to_building_blocks_filtered.pkl
   building_blocks_id_column: 'Reagent_ID'
   building_blocks_score_column: 'chemprop_ensemble_preds'
   building_blocks_smiles_column: 'smiles'
@@ -99,17 +99,3 @@ EVAL:
   batch_size: 128
   pretrained_model_path: null #./outputs_ifm/doc_metric/checkpoints/epoch_${${HYPER_OPT.${data_label}}.epoch}.pdparams #"./outputs_ifm/2024-08-09/06-21-16/checkpoints/epoch_80.pdparams"
   eval_with_no_grad: true
-
-HYPER_OPT:
-  # hidden_units_options = [64, 128, 256, 512]
-  tox21:
-    "d_out": 40
-    "dropout": 0.040875279882956944
-    "hidden_unit1": 512 #3
-    "hidden_unit2": 512 #3
-    "hidden_unit3": 512 #3
-    "l2": 4.482713460277411e-06
-    "omega0": 0.6124886445092693
-    "omega1": 0.7820986807482367
-    "sigma": 13.846474804138776
-    "epoch": 44

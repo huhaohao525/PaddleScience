@@ -23,20 +23,9 @@ from loss_functions import get_loss_func
 import ppsci
 import ppsci.arch.chemprop_molecule
 
-def get_train_loss_func(args, pos_weights=None):  #:paddle.Tensor=None):
+def get_train_loss_func(args):  #:paddle.Tensor=None):
     def train_loss_func(output_dict, label_dict, weight_dict):
-        '''
-        if reg:
-            loss_func = MSELoss(reduction="none")
-        else:
-            loss_func = BCEWithLogitsLoss(reduction="none", pos_weight=pos_weights)
-        return {
-            "pred": (
-                loss_func(output_dict["pred"], label_dict["y"])
-                * (label_dict["mask"] != 0).astype("float32")
-            ).mean()
-        }
-        '''
+        
         #print(len(batch), args.loss_function, args.dataset_type)
 
         preds = output_dict['pred']
@@ -102,24 +91,6 @@ def get_train_loss_func(args, pos_weights=None):  #:paddle.Tensor=None):
 
     return train_loss_func
 
-
-def get_val_loss_func(reg, metric):
-    def val_loss_func(output_dict, label_dict):
-        eval_metric = Meter()
-        eval_metric.update(output_dict["pred"], label_dict["y"], label_dict["mask"])
-
-        if reg:
-            rmse_score = np.mean(eval_metric.compute_metric(metric))
-            mae_score = np.mean(eval_metric.compute_metric("mae"))
-            r2_score = np.mean(eval_metric.compute_metric("r2"))
-            return {"rmse": rmse_score, "mae": mae_score, "r2": r2_score}
-        else:
-            roc_score = np.mean(eval_metric.compute_metric(metric))
-            prc_score = np.mean(eval_metric.compute_metric("prc_auc"))
-            return {"roc_auc": roc_score, "prc_auc": prc_score}
-
-    return val_loss_func
-
 def make_args(dataset_type, epochs, use_gpu, fingerprint_type, property_name):
     # , train_smiles, train_fingerprints):
 
@@ -149,25 +120,23 @@ def make_args(dataset_type, epochs, use_gpu, fingerprint_type, property_name):
         args.features_size = 128 #train_fingerprints.shape[1] # TODO: magic
     return args
 
-def load_raw_data():
+def load_raw_data(cfg):
     import pandas as pd
     from random import Random
-    data_path = './data/Data/1_training_data/antibiotics_hits.csv'
+    data_path = cfg.DATA.data_path #'./data/Data/1_training_data/antibiotics_hits.csv'
     data = pd.read_csv(data_path)
     print(f'Data size = {len(data):,}')
-    num_models = 10
-    num_folds = 10
+    num_models = cfg.DATA.num_models #10
+    num_folds = cfg.DATA.num_folds #10
     indices = np.tile(np.arange(num_folds), 1 + len(data) // num_folds)[:
         len(data)]
     random = Random(0)
     random.shuffle(indices)
     assert 1 <= num_models <= num_folds
-    smiles_column = 'smiles'
-    property_column = 'antibiotic_activity'
+    smiles_column = cfg.DATA.smiles_column #'smiles'
+    property_column = cfg.DATA.property_column #'antibiotic_activity'
     
-    #for model_num in trange(num_models, desc='cross-val'):
-    #print(f'Model {model_num}')
-    model_num = 1 # TODO: magic
+    model_num = 1
     test_index = model_num
     val_index = (model_num + 1) % num_folds
     test_mask = indices == test_index
@@ -184,32 +153,26 @@ def load_raw_data():
 
 def train(cfg: DictConfig):
 
-    train_smiles, train_fingerprints, train_properties = load_raw_data()
+    train_smiles, train_fingerprints, train_properties = load_raw_data(cfg)
 
     args = make_args(
-        dataset_type="classification",
-        epochs=1,
-        use_gpu=True,
-        fingerprint_type=None,
-        property_name="antibiotic_activity"
+        dataset_type=cfg.DATA.dataset_type, #"classification",
+        epochs=cfg.TRAIN.epochs, #1,
+        use_gpu=cfg.TRAIN.use_gpu,
+        fingerprint_type=cfg.DATA.fingerprint_type, #None,
+        property_name=cfg.DATA.property_column #"antibiotic_activity"
     )
     
     # set dataloader config
     train_dataloader_cfg = {
         "dataset": {
-            "name": "MoleculeDatasetIter",
-            "input_keys": ("mol_batch", "features_batch", "atom_descriptors_batch",
-                "atom_features_batch", "bond_features_batch"),
+            "name": cfg.DATA.dataset_name, #"MoleculeDatasetIter",
+            "input_keys": tuple(cfg.MODEL.input_keys),
             "args": args,
             "smiles": train_smiles,
             "fingerprints": train_fingerprints,
             "properties": train_properties,
-            "label_keys": (
-                "targets",
-                "data_weights",
-                "mask",
-                "target_weights",
-            ),
+            "label_keys": tuple(cfg.MODEL.label_keys),
             #"data_dir": cfg.data_dir,
             #"data_mode": "train",
             #"data_label": cfg.data_label,
@@ -220,7 +183,7 @@ def train(cfg: DictConfig):
         #    "drop_last": False,
         #    "shuffle": True,
         #},
-        "num_workers": 1,
+        "num_workers": cfg.TRAIN.num_workers,
     }
 
     # set constraint
@@ -231,49 +194,10 @@ def train(cfg: DictConfig):
         name="Sup",
     )
 
-    # params from dataset
-    '''
-    inputs = sup_constraint.data_loader.dataset.data_tr_x.shape[1]
-    tasks = sup_constraint.data_loader.dataset.task_dict[cfg.data_label]
-    iters_per_epoch = len(sup_constraint.data_loader)
-    logger.info(f"inputs is: {inputs}, iters_per_epoch: {iters_per_epoch}")
-    if not reg:
-        pos_weights = sup_constraint.data_loader.dataset.pos_weights
-        sup_constraint.loss = ppsci.loss.FunctionalLoss(
-            get_train_loss_func(reg, pos_weights)
-        )
-    '''
-
     # wrap constraints together
     constraint = {sup_constraint.name: sup_constraint}
 
-    '''
-    hyper_paras = cfg.HYPER_OPT[cfg.data_label]
-
-    hidden_units = [
-        hyper_paras["hidden_unit1"],
-        hyper_paras["hidden_unit2"],
-        hyper_paras["hidden_unit3"],
-    ]
-    '''
-
-
     # set model
-    '''
-        # **cfg.MODEL,
-        input_keys=("x",),
-        output_keys=("pred",),
-        hidden_units=hidden_units,
-        embed_name=cfg.MODEL.embed_name,
-        inputs=inputs,
-        outputs=len(tasks),
-        d_out=hyper_paras["d_out"],
-        sigma=hyper_paras["sigma"],
-        dp_ratio=hyper_paras["dropout"],
-        reg=reg,
-        first_omega_0=hyper_paras["omega0"],
-        hidden_omega_0=hyper_paras["omega1"],
-    '''
     model = ppsci.arch.chemprop_molecule.MoleculeModel(
         args=args
     )
@@ -285,47 +209,6 @@ def train(cfg: DictConfig):
         learning_rate=cfg.TRAIN.learning_rate, weight_decay=0.001 
     )(model)
 
-    '''
-    # set validator
-    eval_dataloader_cfg = {
-        "dataset": {
-            "name": "IFMMoeDataset",
-            "input_keys": ("x",),
-            "label_keys": (
-                "y",
-                "mask",
-            ),
-            "data_dir": cfg.data_dir,
-            "data_mode": "val",
-            "data_label": cfg.data_label,
-        },
-        "batch_size": cfg.EVAL.batch_size,
-        "sampler": {
-            "name": "BatchSampler",
-            "drop_last": False,
-            "shuffle": True,
-        },
-        "num_workers": 1,
-    }
-
-    rmse_validator = ppsci.validate.SupervisedValidator(
-        eval_dataloader_cfg,
-        loss=ppsci.loss.FunctionalLoss(get_train_loss_func(reg)),
-        output_expr={"pred": lambda out: out["pred"]},
-        metric={
-            "MyMeter": ppsci.metric.FunctionalMetric(get_val_loss_func(reg, metric))
-        },
-        name="MyMeter_validator",
-    )
-    if not reg:
-        pos_weights = rmse_validator.data_loader.dataset.pos_weights
-        rmse_validator.loss = ppsci.loss.FunctionalLoss(
-            get_train_loss_func(reg, pos_weights)
-        )
-
-    validator = {rmse_validator.name: rmse_validator}
-    '''
-
     # initialize solver
     solver = ppsci.solver.Solver(
         model,
@@ -333,8 +216,8 @@ def train(cfg: DictConfig):
         cfg.output_dir,
         optimizer,
         None,
-        cfg.HYPER_OPT[cfg.data_label].epoch,  # cfg.TRAIN.epochs,
-        2 ,#iters_per_epoch, # TODO: magic
+        cfg.TRAIN.epochs,  # cfg.TRAIN.epochs,
+        cfg.TRAIN.iters_per_epoch, # 2 #iters_per_epoch, # TODO: magic
         save_freq=cfg.TRAIN.save_freq,
         eval_during_train=cfg.TRAIN.eval_during_train,
         eval_freq=cfg.TRAIN.eval_freq,
@@ -351,26 +234,26 @@ from chemprop_models import chemprop_predict, my_chemprop_load
 from tqdm import tqdm
 from pathlib import Path
 
-def pre_compute():
+def pre_compute(cfg):
     pass
-    data_path = Path("./data/Data/4_real_space/building_blocks.csv")
-    model_path = Path("./outputs_ifm/doc_metric/checkpoints/epoch_44.pdparams")
-    smiles_column = 'smiles'
-    model_type = 'chemprop'
-    fingerprint_type = None
-    use_gpu = True
-    average_preds = True
-    num_workers = 1
-    preds_column_prefix = None
-    save_path = Path('./pre-compute-hth/building_blocks.csv')
+    data_path = Path(cfg.PRE_COMPUTE.data_path)
+    model_path = Path(cfg.PRE_COMPUTE.model_path)
+    smiles_column = cfg.PRE_COMPUTE.smiles_column
+    model_type = cfg.PRE_COMPUTE.model_type #'chemprop'
+    fingerprint_type = cfg.PRE_COMPUTE.fingerprint_type
+    use_gpu = cfg.PRE_COMPUTE.use_gpu
+    average_preds = cfg.PRE_COMPUTE.average_preds
+    num_workers = cfg.PRE_COMPUTE.num_workers
+    preds_column_prefix = cfg.PRE_COMPUTE.preds_column_prefix
+    save_path = Path(cfg.PRE_COMPUTE.save_path)
 
 
     args = make_args(
-        dataset_type="classification",
+        dataset_type=cfg.DATA.dataset_type,
         epochs=1,
-        use_gpu=True,
-        fingerprint_type=None,
-        property_name="antibiotic_activity"
+        use_gpu=cfg.PRE_COMPUTE.use_gpu,
+        fingerprint_type=cfg.DATA.fingerprint_type,
+        property_name=cfg.DATA.property_column
     )
 
     model = ppsci.arch.chemprop_molecule.MoleculeModel(
@@ -406,10 +289,6 @@ def pre_compute():
         #    model_path in model_paths]
         models = [my_chemprop_load(model, model_path=model_path, device=device) for
             model_path in model_paths]
-
-    
-
-
 
     #else:
     #    models = [sklearn_load(model_path=model_path) for model_path in
@@ -451,39 +330,33 @@ from examples.synthemol.synthemol.reactions import Reaction, REACTIONS, load_and
 from examples.synthemol.synthemol.generate.generator import Generator
 from examples.synthemol.synthemol.generate.utils import create_model_scoring_fn, save_generated_molecules
 
-def generate():
-    pass
-
+def generate(cfg):
+    model_path = cfg.GENERATE.model_path
+    model_type = cfg.GENERATE.model_type #'chemprop' #: MODEL_TYPES
+    save_dir = Path(cfg.GENERATE.save_dir) #: Path,
     
-    model_path = None 
-    model_type = 'chemprop' #: MODEL_TYPES
-    save_dir = Path('./hth_generated') #: Path,
+    building_blocks_path = cfg.GENERATE.building_blocks_path
+    fingerprint_type = cfg.GENERATE.fingerprint_type
+    reaction_to_building_blocks_path = cfg.GENERATE.reaction_to_building_blocks_path
+    building_blocks_id_column = cfg.GENERATE.building_blocks_id_column
+    building_blocks_score_column = cfg.GENERATE.building_blocks_score_column
     
-    building_blocks_path = "./pre-compute-hth/building_blocks.csv" #: Path=BUILDING_BLOCKS_PATH
-    fingerprint_type = None #: (FINGERPRINT_TYPES)=None
-    reaction_to_building_blocks_path = './data/Data/4_real_space/reaction_to_building_blocks_filtered.pkl' #: (Path)=  REACTION_TO_BUILDING_BLOCKS_PATH
-    building_blocks_id_column = 'Reagent_ID' #: str= REAL_BUILDING_BLOCK_ID_COL
-    building_blocks_score_column = 'chemprop_ensemble_preds' # : str=SCORE_COL
+    building_blocks_smiles_column = cfg.GENERATE.building_blocks_smiles_column
+    reactions = REACTIONS 
+    max_reactions = cfg.GENERATE.max_reactions
+    n_rollout = cfg.GENERATE.n_rollout
     
-    building_blocks_smiles_column = 'smiles' #: str=SMILES_COL
-    reactions = REACTIONS #: tuple[Reaction]=REACTIONS
-    max_reactions = 1 #: int=1
-    n_rollout = 20 #20000 #: int=10
+    explore_weight = cfg.GENERATE.explore_weight
+    num_expand_nodes = cfg.GENERATE.num_expand_nodes
     
-    explore_weight = 10.0 #: float=10.0
-    num_expand_nodes = None #: (int)=None
+    optimization = cfg.GENERATE.optimization
+    rng_seed = cfg.GENERATE.rng_seed
     
-    optimization = 'maximize' #: OPTIMIZATION_TYPES='maximize'
-    rng_seed = 0 #: int=0
+    no_building_block_diversity = cfg.GENERATE.no_building_block_diversity
+    store_nodes = cfg.GENERATE.store_nodes
     
-    no_building_block_diversity = False #: bool=False
-    store_nodes = False #: bool=False
-    
-    verbose = False #: bool=False
-    replicate = True #: bool=False
-
-
-
+    verbose = cfg.GENERATE.verbose
+    replicate = cfg.GENERATE.replicate
 
     save_dir.mkdir(parents=True, exist_ok=True)
     print('Loading building blocks...')
@@ -562,9 +435,9 @@ def main(cfg: DictConfig):
     if cfg.mode == "train":
         train(cfg)
     elif cfg.mode == 'pre-compute':
-        pre_compute()
+        pre_compute(cfg)
     elif cfg.mode == 'generate':
-        generate()
+        generate(cfg)
     else:
         raise ValueError(f"cfg.mode should in ['train', 'eval'], but got '{cfg.mode}'")
 

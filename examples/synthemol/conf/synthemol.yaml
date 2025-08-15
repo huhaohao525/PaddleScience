@@ -11,7 +11,7 @@ defaults:
 hydra:
   run:
     # dynamic output directory according to running time and override name
-    dir: outputs_ifm/doc_metric #${now:%Y-%m-%d}/${now:%H-%M-%S}/${hydra.job.override_dirname}
+    dir: outputs_synthemol #${now:%Y-%m-%d}/${now:%H-%M-%S}/${hydra.job.override_dirname}
   job:
     name: ${mode} # name of logfile
     chdir: false # keep current working directory unchanged
@@ -27,18 +27,19 @@ output_dir: ${hydra:run.dir}
 log_freq: 20
 
 data_label: "tox21" #'tox21'
-data_dir: "./dataset/"
+data_dir: "./data/"
 
 # model settings
 MODEL:
-  input_keys: ["x"]
+  input_keys: ["mol_batch", "features_batch", "atom_descriptors_batch",
+                "atom_features_batch", "bond_features_batch"]
   output_keys: ["pred"]
-  embed_name: "IFM"
+  label_keys: ["targets", "data_weights", "mask", "target_weights"]
 
 # training settings
 TRAIN:
-  epochs: 80
-  iters_per_epoch: null #42
+  epochs: 50 #40
+  iters_per_epoch: 2 #20 #null #42
   save_freq: 2
   eval_during_train: false
   eval_freq: 2
@@ -46,6 +47,52 @@ TRAIN:
   batch_size: 128
   pretrained_model_path: null
   checkpoint_path: null
+  use_gpu: true
+  num_workers: 1
+
+DATA:
+  dataset_type: "classification"
+  fingerprint_type: null
+  smiles_column: 'smiles'
+  property_column: "antibiotic_activity"
+  data_path: './data/Data/1_training_data/antibiotics_hits.csv'
+  num_models: 1
+  num_folds: 10
+  dataset_name: "MoleculeDatasetIter"
+
+PRE_COMPUTE:
+  data_path: "./data/Data/4_real_space/building_blocks.csv"
+  model_path: "./outputs_synthemol/checkpoints/epoch_44.pdparams"
+  smiles_column: 'smiles'
+  model_type: 'chemprop'
+  fingerprint_type: null
+  use_gpu: true
+  average_preds: true
+  num_workers: 1
+  preds_column_prefix: null
+  save_path: './pre-compute/building_blocks.csv'
+
+GENERATE:
+  model_path: null
+  model_type: 'chemprop'
+  save_dir: './generated'
+  building_blocks_path: "./pre-compute/building_blocks.csv"
+  fingerprint_type: null
+  reaction_to_building_blocks_path: './data/Data/4_real_space/reaction_to_building_blocks_filtered.pkl'
+  building_blocks_id_column: 'Reagent_ID'
+  building_blocks_score_column: 'chemprop_ensemble_preds'
+  building_blocks_smiles_column: 'smiles'
+  max_reactions: 1
+  n_rollout: 20 # 20000
+  explore_weight: 10.0 #: float=10.0
+  num_expand_nodes: null #: (int)=None
+  optimization: 'maximize'
+  rng_seed: 0
+  no_building_block_diversity: false
+  store_nodes: false
+  verbose: false
+  replicate: true
+
 
 # evaluation settings
 EVAL:
@@ -66,58 +113,3 @@ HYPER_OPT:
     "omega1": 0.7820986807482367
     "sigma": 13.846474804138776
     "epoch": 44
-  sider:
-    "d_out": 75
-    "dropout": 0.006014483573407364
-    "hidden_unit1": 128 #1
-    "hidden_unit2": 512 #3
-    "hidden_unit3": 128 #1
-    "l2": 6.300597661178866e-05
-    "omega0": 0.5989987615729764
-    "omega1": 0.6988619728428394
-    "sigma": 0.028121178425104386
-    "epoch": 20 #40 #20 #12 #169
-  bace:
-    "d_out": 38
-    "dropout": 0.05495722504861231
-    "hidden_unit1": 512 #3
-    "hidden_unit2": 512 #3
-    "hidden_unit3": 128 #1
-    "l2": 0.0026367264050607565
-    "omega0": 0.41503054103861836
-    "omega1": 0.609732460409304
-    "sigma": 3.4713824367756536
-    "epoch": 36
-  bbbp:
-    "d_out": 122
-    "dropout": 0.09708794924402875
-    "hidden_unit1": 256 #2
-    "hidden_unit2": 256 #2
-    "hidden_unit3": 128 #1
-    "l2": 0.008891601037203106
-    "omega0": 0.8701462728133552
-    "omega1": 0.9902222575839961
-    "sigma": 36.177153824422135
-    "epoch": 12
-  hiv:
-    "d_out": 108
-    "dropout": 0.12307438739178816
-    "hidden_unit1": 256 #2
-    "hidden_unit2": 256 #2
-    "hidden_unit3": 512 #3
-    "l2": 0.00363621683596208
-    "omega0": 0.9716859195340234
-    "omega1": 0.2804801296584338
-    "sigma": 0.021289589991844306
-    "epoch": 66 #65
-  common:
-    "d_out": 76 #hp.randint('d_out', 127),
-    "dropout": 0.02659859559082154 #hp.uniform('dropout', 0, 0.5),
-    "hidden_unit1": 128 #hp.choice('hidden_unit1', [64, 128, 256, 512]),
-    "hidden_unit2": 64 #hp.choice('hidden_unit2', [64, 128, 256, 512]),
-    "hidden_unit3": 64 #hp.choice('hidden_unit3', [64, 128, 256, 512])
-    "l2": 0.0006264826906785799 #hp.uniform('l2', 0, 0.01),
-    "omega0": 0.48799501140521095 #hp.uniform('omega0', 0.001, 1), #1
-    "omega1": 0.37676389088248685 #hp.uniform('omega1', 0.001, 1), #1
-    "sigma": 0.186724743661628 #hp.loguniform('sigma', np.log(0.01), np.log(100)),
-    "epoch": 80

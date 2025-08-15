@@ -1,3 +1,5 @@
 tap
 typed-argument-parser
 rdkit
+pandas
+tqdm

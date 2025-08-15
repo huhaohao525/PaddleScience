@@ -2,99 +2,119 @@
 
 !!! note
 
-    1. 开始训练、评估前，请先下载 molecules 数据集 [dataset.zip](https://paddle-org.bj.bcebos.com/paddlescience/datasets/IFM/dataset.zip) ，或[Google Drive(作者原始链接)](https://drive.google.com/drive/folders/1ZYdYQ0TtmShJC-z6dr4BU1aPfeQSE9gD?usp=sharing)，并对应修改 yaml 配置文件中的 `data_dir` 为解压后的数据集路径。
-    2. 如果需要使用预训练模型进行评估，请先下载预训练模型[pretrained.zip](https://paddle-org.bj.bcebos.com/paddlescience/models/IFM/pretrained.zip)并解压，例如pretrained路径。
-    3. 开始训练、评估前，请安装 `rdkit` 和 `scikit-learn`等，相关依赖请执行`pip install requirements.txt`安装。
+    1. 开始训练、评估前，请先下载实验所用数据集 [Data.zip](https://paddle-org.bj.bcebos.com/paddlescience/datasets/synthemol/Data.zip) ，并对应修改 yaml 配置文件中的 `data_dir` 为解压后的数据集路径。
+    2. 如果需要使用预训练模型进行评估，请先下载预训练模型[pretrained.zip](https://paddle-org.bj.bcebos.com/paddlescience/models/synthemol/pretrained.zip)并解压，例如pretrained路径。
+    3. 开始训练、生成前，请安装 `rdkit` 等，相关依赖请执行`pip install requirements.txt`安装。
 
-=== "模型训练命令"
+=== "Property Predictor模型训练命令"
 
     ``` sh
-    # 在tox21/sider/hiv/bace/bbbp等数据上训练模型MLP-IFM,embed_name可选IFM/None
-    # mode/data_label/MODEL.embed_name 等参数可在conf/ifm.yaml进行配置
-    python ifm.py mode=train data_label=tox21 MODEL.embed_name='IFM'
+    # 使用antibiotics等数据训练模型chemprop模型,实现Property Predict
+    # 配置可在conf/synthemol.yaml进行修改
+    python main.py mode=train
     ```
 
-=== "模型评估命令"
+=== "预计算building blocks分数命令"
 
     ``` sh
-    # 在tox21/sider/hiv/bace/bbbp等数据上评估模型MLP-IFM,embed_name可选IFM/None
-    # 预训练模型的路径例如： pretrained/IFM/bace/model.pdparams 或使用自行训练的模型路径
-    python ifm.py mode=eval data_label=tox21 MODEL.embed_name='IFM' EVAL.pretrained_model_path=pretrained/IFM/bace/model.pdparams
+    # 使用训练好的模型进行building blocks的分数与计算，以加速下一个生成阶段
+    # 配置可在conf/synthemol.yaml进行修改
+    python main.py mode=pre-compute
+    ```
+
+=== "使用synthemol生成分子命令"
+
+    ``` sh
+    # 使用预计算的building blocks的分数指引，结合synthemol使用蒙特卡洛树搜索，进行分子生成
+    # 配置可在conf/synthemol.yaml进行修改
+    python main.py mode=generate
     ```
 
 ## 1. 背景简介
 
-分子特性预测（MPP）是计算药物发现中的一项关键任务，旨在识别具有理想药理学和 ADMET（吸收、分布、代谢、排泄和毒性）特性。机器学习模型已被广泛应用在这个快速发展的领域，常用的模型有两种：传统的非深度模型和深度模型。在非深度模型中，分子被输入到传统机器学习模型，例如计算得到的或手动设计的分子指纹到随机森林和支持向量机等。另一类利用深度模型以数据驱动的方式来提取表征分子。具体来说，例如使用多层感知器（MLP）可应用于计算得到的或手动设计的分子指纹；基于序列的神经网络架构包括循环神经网络（RNN）、一维卷积神经网络(1D CNN) 和Transformers等可被用来编码表征的分子SMILES字符串。
+泛耐药菌的迅速出现，使得开发结构全新的抗生素变得刻不容缓。人工智能虽可发现新型抗生素，但现有方法仍有明显缺陷：性质预测模型只能逐一评估分子，面对庞大的化学空间时扩展性极差；而生成式模型虽能快速探索巨量化学空间，却常输出难以合成的分子。为此，作者提出了 SyntheMol，一种生成式模型，可从近 300 亿个分子的化学空间中设计出易于合成的新化合物。作者将 SyntheMol 用于抑制鲍曼不动杆菌（一种棘手的革兰阴性病原菌）的生长，共合成 58 个生成分子并进行实验验证，其中 6 个结构全新的分子对鲍曼不动杆菌及其他多种系统发育差异显著的细菌均表现出抗菌活性。该研究展示了生成式人工智能在庞大化学空间中设计结构新颖、可合成且有效的小分子抗生素候选物的潜力，并提供了实验验证。
 
-此外，分子可以自然地表示为以原子为节点、键为边的图结构，激发了一系列致力于利用这种结构化归纳偏差来获得更好的分子表示。这些方法的关键成果是图神经网络（GNN），它在学习过程中同时考虑图结构和属性特征。最近，研究人员将分子的3D构象纳入其表示中取得了更好的性能，然而基于现实的因素考虑，例如计算成本、对齐不变性，构象生成的不确定性以及目标分子不可用的构象限制了这些模型的实际适用性。作者总结了被广泛使用的分子的描述符及其相应的模型来做基准测试。之前的大量研究，观察到深度模型在分子数据集上很难超越非深度模型。但是这些研究并没有考虑新兴的深度模型（例如Transformer、SphereNet）等，也没有研究不同分子描述符（例如3D分子图）的影响，也没有研究模型经常在分子上效果不佳的深层次的原因。
+## 2. Synthemol原理
 
-因此，作者进行了全面的分子特性预测基准研究，以及数据集和超参数调整的精确方法。结果证实了之前研究的观察结果，即深度模型通常很难超越传统的非深度模型，即使不考虑深度学习算法训练速度较慢的情况。因此，作者基于上述问题，提出了一种简单而有效的特征映射方法IFM，以帮助深度模型在理论情况下学习非平滑目标函数，取得了更好的效果。
+本章节仅对 Synthemol 的模型原理进行简单地介绍，详细的理论推导请阅读 [Generative AI for designing and validating easily synthesizable and structurally novel antibiotics](https://www.nature.com/articles/s42256-024-00809-7)。
 
-## 2. IFM模型原理
+### 2.1 Property Predictor
 
-### 2.1 IFM方法
+Chemprop 是一种分子性质预测模型，它利用有向消息传递神经网络处理分子，并对其性质进行预测。Chemprop 首先从分子图中提取简单的原子与键特征（如原子类型和键类型），为每个原子和键构建特征向量。接着，模型执行三轮消息传递：在每一轮中，神经网络层将邻近原子和键的信息迭代融合。消息传递完成后，Chemprop 将所有融合后的特征向量求和，生成一个代表整个分子的单一特征向量。该向量再输入一个两层的前馈神经网络，以预测分子性质；在本研究中，即预测抑制鲍曼不动杆菌生长的概率。我们使用的版本为 Chemprop v1.5.2，迁移自 PyTorch v1.12.0.post2。另外两种predictor请参考原文。
 
-本章节仅对 IFM 的模型原理进行简单地介绍，详细的理论推导请阅读 [Understanding the Limitations of Deep Models for Molecular property prediction: Insights and Solutions](https://openreview.net/pdf?id=NLFqlDeuzt)。
+### 2.2 Synthemol
 
-正如作者论文中所解释的，深度模型很难学习分子的非平滑目标函数数据，这种现象在文献中被称为“光谱偏差”。为了克服这种偏差，之前的一些工作通过实验发现输入特征的启发式正弦映射允许 MLP 学习非平滑目标函数。然而，这些映射方法将不可避免地混合进了原始特征。为了解决这种情况，作者引入了一种名为独立特征映射的新方法（IFM），在将分子特征的每个维度输入模型之前分别实现嵌入。将分子特征表示为 $x ∈ \mathbb{R}^d$，我们将 IFM 表示为：
+SyntheMol 是一种生成式模型，它在组合化学空间中进行探索，该空间由分子砌块经化学反应所生成的分子构成，以寻找具有目标性质的分子。SyntheMol 采用与 AlphaGo 类似的蒙特卡洛树搜索（MCTS）算法，高效地在这一化学空间中搜寻理想分子。SyntheMol 不仅能迅速识别出有前景的分子，还能同时给出其合成路线（即通过一系列一步或多步化学反应，将分子砌块组合起来的完整步骤）。以下，我们给出描述 SyntheMol MCTS 算法所需的数学符号，并提供相应的伪代码。
 
-$$
-\begin{equation}
-f_x = [\sin(v)|| \cos(v)], v = [2πc_1x, . . . , 2πc_kx]
-\end{equation}
-$$
+### SyntheMol MCTS Algorithm
 
-其中 $||$ 表示两个向量的串联，$c = [c_1, c_2, ···, c_k]$ 是可学习参数，从 $N(0, σ)$ 和 $f_x ∈ \mathbb{R}^{2k×d}$ 初始化。作者研究了超参数 $k$ 和 $σ$ 的影响。由于 $\cos(a − b) = \cos a \cos b + \sin a \sin b$，我们有：
+**Requires:**  
 
-$$
-\begin{equation}
-f_x · f_{x^′} =\sum_{i=1}^k cos(2πc_i(x − x^′)) := g_c(x − x^′)
-\end{equation}
-$$
+- Synthesis tree `T`  
+- Property prediction model `M`  
+- Maximum number of rollouts `n_rollout`  
+- Maximum number of reactions `n_reaction`  
 
-其中 · 是点积，$x^′$是另一个分子特征。因此，IFM 可以映射数据点到向量空间，以便它们的点积达到一定的距离度量，这是预期的特征映射方法的特征。根据之前的研究，作者提供了 IFM 有效性的理论依据。正如先前一些工作证明的有效性，深度模型可以用神经正切核（NTK）来近似。具体来说，让 $I$ 代表一个全连接的深度网络，其权重 $θ$ 是从高斯初始化的分布 $N$ ，NTK 理论表明，随着 $I$ 中层的宽度变得无穷大，并且随机梯度下降 (SGD) 的学习率接近零，在训练时函数 $I(x; θ)$ 收敛为使用神经正切核 (NTK)的核回归解，即：
+---
 
-$$
-\begin{equation}
-h_{NTK}(x, x^′) = E_{θ∼N} \langle \frac{∂I(x; θ)}{∂θ} , \frac{∂I(x^′; θ)}{∂θ} \rangle
-\end{equation}
-$$
+**function `MCTS()`:**  
+&nbsp;&nbsp;&nbsp;&nbsp;**for** `i = 1` to `n_rollout` **do**:  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`rollout(T.root)`  
+&nbsp;&nbsp;&nbsp;&nbsp;**end for**  
+&nbsp;&nbsp;&nbsp;&nbsp;**return** all visited nodes in `T` with:  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 molecule and ≥ 1 reaction  
 
-当输入仅限于超球面时，MLP 的 NTK 可以表示为点积内核 (形式为 $h_{NTK}(x · x^′)$ 对于标量函数 $h_{NTK} : \mathbb{R} → \mathbb{R}$ )。在作者的方案中，深度模型的输入为 $f_x$，IFM 和 NTK 的组合内核可以表示为：
+---
 
-$$
-\begin{equation}
-h_{NTK} (f_x · f_{x^′} ) = h_{NTK} (g_c (x − x^′)) = (h_{NTK} \circ g_c)(x − x^′)
-\end{equation}
-$$
+**function `rollout(N)`:**  
+&nbsp;&nbsp;&nbsp;&nbsp;**if** node `N` has undergone `≥ n_reaction` reactions **then**  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**return** property prediction score of `M` applied to molecules in `N`  
+&nbsp;&nbsp;&nbsp;&nbsp;**end if**  
+&nbsp;&nbsp;&nbsp;&nbsp;`E ← expand_node(N)`  
+&nbsp;&nbsp;&nbsp;&nbsp;`S ← select` child node in `E` with largest MCTS score  
+&nbsp;&nbsp;&nbsp;&nbsp;**return** `rollout(S)`  
 
-因此，在这些映射的分子特征上训练深度模型对应于核回归固定组合 NTK 函数 $h_{NTK} \circ g_c$。考虑到参数 $c$ 是可调的，IFM 创建了一个组合的 NTK，它不是固定的，而且是可调的。它使我们能够高效地通过操纵参数 $c$ 控制学习的频率范围。
+---
 
-### 2.2 IFM 结合 MLP 模型的训练、推理实验
+**function `expand_node(N)`:**  
+&nbsp;&nbsp;&nbsp;&nbsp;`E ← empty set of nodes`  
+&nbsp;&nbsp;&nbsp;&nbsp;**foreach** reaction `R` **do**  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**if** `R` is compatible with molecules in `N` **then**  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add new node to `E` with each product of `R` applied to molecules in `N`  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**end if**  
+&nbsp;&nbsp;&nbsp;&nbsp;**end for**  
+&nbsp;&nbsp;&nbsp;&nbsp;**foreach** building block `B` **do**  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**if** any reaction is compatible with `B` and molecules in `N` **then**  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add new node to `E` with `B` and molecules in `N`  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**end if**  
+&nbsp;&nbsp;&nbsp;&nbsp;**end for**  
+&nbsp;&nbsp;&nbsp;&nbsp;**return** `E`
 
-在我们的实验中，我们为各种深度模型配备了 IFM。具体来说，对于以指纹作为输入的 MLP，我们直接将所提出的特征映射方法应用于指纹（在特征选择和标准化之后）。
+## 3. Synthemol模型实现
 
-## 3. IFM模型实现
-
-接下来开始讲解如何基于 PaddleScience 代码，实现 IFM-MLP 模型的训练与推理。关于该案例中的其余细节请参考 [API文档](../api/arch.md)。
+接下来开始讲解如何基于 PaddleScience 代码，实现 Synthemol 模型的训练、预计算分数与生成。关于该案例中的其余细节请参考 [API文档](../api/arch.md)。
 
 ### 3.1 数据集介绍
 
-数据集采用了作者 [IFM](https://github.com/junxia97/IFM) 处理好的 molecues 数据集。
+数据集采用了作者仓库 [Synthemol](https://github.com/swansonk14/SyntheMol) 的 Data.zip 数据集。
 
-本数据集由IFM作者处理并提供。文章中作者对比了12个数据集，其提供的数据下载包括了至少5个分子数据集， 如bace，bbbp，hiv，sider，tox21等。数据集以csv格式保存。数据集包含了分子的 SMILES strings, labels 以及 fingerprints.
+训练集由 3 个化合物库组成：  
 
-**Fingerprints数据设置**
+- 库 1 共 2371 个分子，来自 Pharmakon-1760 库（含 1 360 种 FDA 批准药物和 400 种国际批准药物）以及 800 种从植物、动物和微生物来源分离的天然产物。  
+- 库 2 为 Broad Drug Repurposing Hub，共 6 680 个分子，其中多数为 FDA 批准药物或临床候选化合物。  
+- 库 3 为一个小分子合成筛选库，含 5 376 个分子，系从 Broad Institute 更大的化合物库中随机抽样获得。
 
-以MLP使用的Fingerprints为例：遵循常见做法，作者将各种分子指纹的拼接，包括 881 个 PubChem 指纹 (PubchemFP)、307 个子结构指纹 (SubFP) 和 206 个 MOE 1-D 和 2-D 描述符提供给SVM、XGB、RF和MLP模型全面表示分子结构，并通过一些预处理程序去除了一些特征，具体如：（1）缺失值的； (2) 方差极低（方差<0.05）； (3) 与另一个特征有很高的相关性（皮尔逊相关系数> 0.95）。保留的特征被归一化为平均值0和方差1。此外，考虑到传统机器模型（SVM、RF、XGB）不能直接应用于多任务分子数据集中，作者将多任务数据集分为多个单任务数据集并使用每个数据集来训练模型。
+所有 3 个库均以两次生物学重复的形式，对鲍曼不动杆菌 ATCC 17978 进行生长抑制活性筛选。实验流程如下：
 
-**数据协议与测试设置**
+1. 将菌株于 37 °C 在 2 ml LB 培养基中过夜培养，随后以 1:10 000 稀释于新鲜 LB。  
+2. 取 49.5 µl（384 孔板）或 99 µl（96 孔板）菌液，使用手工或 Agilent Bravo 移液系统加入 Corning 平底微孔板。  
+3. 每孔加入待测化合物，终浓度 50 µM，终体积 50 µl（384 孔板）或 100 µl（96 孔板）。  
+4. 37 °C 静置孵育 16 h。  
+5. 使用 SpectraMax M3 酶标仪（Molecular Devices）于 600 nm 读取吸光度，数据按板内四分位均值归一化，随后进行汇总与阳性命中判定。
 
-首先，作者以 8:1:1 的比例随机分割训练集、验证集和测试集。随后根据验证集的性能调整超参数，并使用之前确定的最佳超参数，使用不同的随机种子进行 50 次独立运行不同数据集分割，以获得更可靠的结果。遵循 MoleculeNet 基准，作者使用受试者操作特征曲线下面积 (AUC-ROC) 评估分类任务，但 MUV 数据集上的精度曲线下面积 (AUC-PRC) 除外，因为其数据分布存在极端偏差。使用均方根误差 (RMSE) 或平均绝对误差 (MAE) 报告回归任务的性能。作者报告了某些数据集上多任务的平均性能，因为它们包含多个任务。此外，为了避免过度拟合问题，如果在连续 50 个 epoch 中没有观察到验证性能改善，则所有深度模型都会采用早停方案进行训练。作者将最大 epoch 设置为 300，批大小设置为 128。更多详细信息，包括每个模型的超参数调整空间等，请参考作者原始论文。
+更多详细信息，包括每个模型的超参数调整空间等，请参考作者原始论文。本仓库使用的具体超参数已在yaml配置文件中预设，可根据情况自行调节。
 
-本仓库使用的具体超参数已在yaml配置文件中预设，可根据情况自行调节。
-
-### 3.2 模型预训练
+### 3.2 Chemprop模型训练
 
 #### 3.2.1 约束构建
 
@@ -102,120 +122,107 @@ $$
 
 数据加载的代码如下:
 
-``` py linenums="72" title="examples/ifm/ifm.py"
+``` py linenums="72" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:72:92
+examples/synthemol/main.py:72:92
 --8<--
 ```
 
-其中，"dataset" 字段定义了使用的 `Dataset` 类名为 `IFMMoeDataset`，"sampler" 字段定义了使用的 `Sampler` 类名为 `BatchSampler`，设置的 `batch_size` 为 128，`num_works` 为 1。
+其中，"dataset" 字段定义了使用的 `Dataset` 类名为 `MoleculeDatasetIter`，`num_works` 为 1。
 
 定义监督约束的代码如下：
 
-``` py linenums="94" title="examples/ifm/ifm.py"
+``` py linenums="94" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:94:100
+examples/synthemol/main.py:94:100
 --8<--
 ```
 
 `SupervisedConstraint` 的第一个参数是数据的加载方式，这里使用上文中定义的 `train_dataloader_cfg`；
 
-第二个参数是损失函数的定义，这里使用自定义的损失函数；作者通过Regularization flag `reg` 参数控制损失函数选择： `MSELoss` 或 `BCEWithLogitsLoss`；
+第二个参数是损失函数的定义，这里使用自定义的损失函数；作者通过 `get_loss_func` 函数通过传递参数控制损失函数选择： 文中Chemprop模型使用的为 `CrossEntropyLoss`；
 
 第三个参数是约束条件的名字，方便后续对其索引。此处命名为 `Sup`。
 
 #### 3.2.2 模型构建
 
-在该案例中，分子属性预测模型基于 MLP 网络模型实现，用 PaddleScience 代码表示如下：
+在该案例中，分子属性预测模型基于 Chemprop 网络模型实现，用 PaddleScience 代码表示如下：
 
-``` py linenums="256" title="examples/ifm/ifm.py"
+``` py linenums="256" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:256:271
+examples/synthemol/main.py:256:271
 --8<--
 ```
 
 网络模型的参数通过配置文件进行设置如下：
 
-``` yaml linenums="32" title="examples/ifm/conf/ifm.yaml"
+``` yaml linenums="32" title="examples/synthemol/conf/synthemol.yaml"
 --8<--
-examples/ifm/conf/ifm.yaml:32:35
+examples/synthemol/conf/synthemol.yaml:32:35
 --8<--
 ```
 
-其中，`input_keys` 和 `output_keys` 分别代表网络模型输入、输出变量的名称，具体超参数hyper_paras根据实验配置参考ifm.yaml中的`HYPER_OPT`字段。
+其中，`input_keys` 和 `output_keys` 分别代表网络模型输入、输出变量的名称，具体超参数hyper_paras根据实验配置参考synthemol.yaml中的`HYPER_OPT`字段。
 
 #### 3.2.3 学习率与优化器构建
 
 本案例中使用的学习率大小设置为 `0.001`。优化器使用 `Adam`，并将参数进行分组，使用不同的`weight_decay`,用 PaddleScience 代码表示如下：
 
-``` py linenums="141" title="examples/ifm/ifm.py"
+``` py linenums="141" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:141:143
---8<--
-```
-
-#### 3.2.4 评估器构建
-
-本案例训练过程中会按照一定的训练轮数间隔，使用验证集评估当前模型的训练情况，需要使用 `SupervisedValidator` 构建评估器。代码如下：
-
-``` py linenums="145" title="examples/ifm/ifm.py"
---8<--
-examples/ifm/ifm.py:145:182
+examples/synthemol/main.py:141:143
 --8<--
 ```
 
-`SupervisedValidator` 评估器与 `SupervisedConstraint` 比较相似，不同的是评估器需要设置评价指标 `metric`，在这里使用了自定义的评价指标分别是 `AUC-ROC`、`PRC-AUC`、`RMSE`、`MAE` 和 `R2`,程序会根据`data_label`进行设置，名称为`My_Metric`。
+#### 3.2.4 模型训练
 
-#### 3.2.5 模型训练与评估
+完成上述设置之后，只需要将上述实例化的对象按顺序传递给 `ppsci.solver.Solver`，然后启动训练。
 
-完成上述设置之后，只需要将上述实例化的对象按顺序传递给 `ppsci.solver.Solver`，然后启动训练、评估。
-
-``` py linenums="184" title="examples/ifm/ifm.py"
+``` py linenums="184" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:184:202
+examples/synthemol/main.py:184:202
 --8<--
 ```
 
-### 3.3 模型评估
+### 3.3 building blocks分数预计算
 
 构建模型的代码为：
 
-``` py linenums="256" title="examples/ifm/ifm.py"
+``` py linenums="256" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:256:271
+examples/synthemol/main.py:256:271
 --8<--
 ```
 
-构建评估器的代码为：
+### 3.4 Synthemol生成分子
 
-``` py linenums="273" title="examples/ifm/ifm.py"
+构建模型的代码为：
+
+``` py linenums="256" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py:273:310
+examples/synthemol/main.py:256:271
 --8<--
 ```
 
 ## 4. 完整代码
 
-``` py linenums="1" title="examples/ifm/ifm.py"
+``` py linenums="1" title="examples/synthemol/main.py"
 --8<--
-examples/ifm/ifm.py
+examples/synthemol/main.py
 --8<--
 ```
 
 ## 5. 结果展示
 
-下表展示了MLP模型不嵌入与嵌入作者提出的IFM，在不同数据集上的AUC_ROC表现对比。可下载预训练模型进行评估[IFM-MLP](https://paddle-org.bj.bcebos.com/paddlescience/models/IFM/pretrained.zip)
+查看生成的molecules.csv，可以看到类似于下表的生成的分子信息：
 
-|  | tox21 | sider | hiv | bace | bbbp |
-| :-- | :-- | :-- | :-- | :-- | :-- |
-| **MLP-None** | 0.82682 | 0.50039 | 0.71932 | 0.88891 | 0.66834 |
-| **MLP-IFM** | 0.84245 | 0.60289 | 0.74007 | 0.89553 | 0.84864 |
-| **MLP-IFM Loss** | 0.25697 | 1.36643 | 0.15742 | 0.47294 | 1.39181 |
+|  | smiles | node_id | num_expansions | rollout_num | score | Q_value | num_reactions | reaction_1_id | building_block_1_1_id | building_block_1_1_smiles | building_block_1_2_id | building_block_1_2_smiles |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+|  | C#CCN(C(=O)C(C)(C)C#C)C1CCN(C(=O)OC(C)(C)C)CC1 | 91431 | 20 | 1 |  |  | 1 | 22 | 4349560 | C#CCNC1CCN(C(=O)OC(C)(C)C)CC1 | 2998277 | C#CC(C)(C)C(=O)O |
 
-
-可以看到增加了IFM模块的模型可以取得更优的预测结果，符合作者的设计目的。
+可以看到生成了符合要求的分子信息，符合作者的设计目的。
 
 ## 6. 参考文献
 
-- [Understanding the Limitations of Deep Models for Molecular property prediction: Insights and Solutions](https://openreview.net/pdf?id=NLFqlDeuzt)
-- [作者原始仓库](https://github.com/junxia97/IFM)
+- [Generative AI for designing and validating easily synthesizable and structurally novel antibiotics](https://www.nature.com/articles/s42256-024-00809-7)
+- [作者原始仓库](https://github.com/swansonk14/SyntheMol)
